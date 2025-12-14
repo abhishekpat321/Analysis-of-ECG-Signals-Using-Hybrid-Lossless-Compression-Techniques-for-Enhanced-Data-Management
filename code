@@ -1,0 +1,142 @@
+The Peres gate is a 3×3 reversible logic gate used as a building block for reversible arithmetic.
+
+module peres_gate (
+    input  a,
+    input  b,
+    input  c,
+    output p,
+    output q,
+    output r
+);
+    assign p = a;
+    assign q = a ^ b;
+    assign r = (a & b) ^ c;
+endmodule
+
+
+
+The reversible full adder is constructed using two cascaded Peres gates.
+
+module peres_fa (
+    input  a,
+    input  b,
+    input  c,
+    output s,
+    output ca
+);
+    wire p1, q1, r1, p2;
+
+    peres_gate u0 (a, b, 1'b0, p1, q1, r1);
+    peres_gate u1 (q1, c, r1, p2, s, ca);
+endmodule
+
+
+
+
+ 8-bit Reversible Adder
+module rev_add_8 (
+    input  [7:0] a,
+    input  [7:0] b,
+    output [8:0] s
+);
+    wire c1,c2,c3,c4,c5,c6,c7;
+
+    peres_fa p1 (a[0], b[0], 1'b0, s[0], c1);
+    peres_fa p2 (a[1], b[1], c1,    s[1], c2);
+    peres_fa p3 (a[2], b[2], c2,    s[2], c3);
+    peres_fa p4 (a[3], b[3], c3,    s[3], c4);
+    peres_fa p5 (a[4], b[4], c4,    s[4], c5);
+    peres_fa p6 (a[5], b[5], c5,    s[5], c6);
+    peres_fa p7 (a[6], b[6], c6,    s[6], c7);
+    peres_fa p8 (a[7], b[7], c7,    s[7], s[8]);
+endmodule
+
+
+9-bit Reversible Adder
+module rev_add_9 (
+    input  [8:0] a,
+    input  [8:0] b,
+    output [9:0] s
+);
+    wire c1,c2,c3,c4,c5,c6,c7,c8;
+
+    peres_fa p1 (a[0], b[0], 1'b0, s[0], c1);
+    peres_fa p2 (a[1], b[1], c1,   s[1], c2);
+    peres_fa p3 (a[2], b[2], c2,   s[2], c3);
+    peres_fa p4 (a[3], b[3], c3,   s[3], c4);
+    peres_fa p5 (a[4], b[4], c4,   s[4], c5);
+    peres_fa p6 (a[5], b[5], c5,   s[5], c6);
+    peres_fa p7 (a[6], b[6], c6,   s[6], c7);
+    peres_fa p8 (a[7], b[7], c7,   s[7], c8);
+    peres_fa p9 (a[8], b[8], c8,   s[8], s[9]);
+endmodule
+
+
+
+10-bit and 11-bit Reversible Adders
+
+(Used for hierarchical accumulation in mean filtering)
+
+module rev_add_10 (
+    input  [9:0] a,
+    input  [9:0] b,
+    output [10:0] s
+);
+    wire c1,c2,c3,c4,c5,c6,c7,c8,c9;
+
+    peres_fa p1  (a[0], b[0], 1'b0, s[0], c1);
+    peres_fa p2  (a[1], b[1], c1,   s[1], c2);
+    peres_fa p3  (a[2], b[2], c2,   s[2], c3);
+    peres_fa p4  (a[3], b[3], c3,   s[3], c4);
+    peres_fa p5  (a[4], b[4], c4,   s[4], c5);
+    peres_fa p6  (a[5], b[5], c5,   s[5], c6);
+    peres_fa p7  (a[6], b[6], c6,   s[6], c7);
+    peres_fa p8  (a[7], b[7], c7,   s[7], c8);
+    peres_fa p9  (a[8], b[8], c8,   s[8], c9);
+    peres_fa p10 (a[9], b[9], c9,   s[9], s[10]);
+endmodule
+
+
+4×4 Mean Filter Module (Noise Reduction)
+
+This module performs spatial averaging, reducing noise and fluctuations before compression.
+
+module mean_fil_4x4 (
+    input  [7:0] p1,p2,p3,p4,p5,p6,p7,p8,
+                 p9,p10,p11,p12,p13,p14,p15,p16,
+    output [7:0] denoised_pix
+);
+    wire [8:0]  s1,s2,s3,s4,s5,s6,s7,s8;
+    wire [9:0]  ss1,ss2,ss3,ss4;
+    wire [10:0] sss1,sss2;
+    wire [11:0] sss3;
+
+    rev_add_8  u0 (p1,  p2,  s1);
+    rev_add_8  u1 (p3,  p4,  s2);
+    rev_add_8  u2 (p5,  p6,  s3);
+    rev_add_8  u3 (p7,  p8,  s4);
+    rev_add_8  u4 (p9,  p10, s5);
+    rev_add_8  u5 (p11, p12, s6);
+    rev_add_8  u6 (p13, p14, s7);
+    rev_add_8  u7 (p15, p16, s8);
+
+    rev_add_9  u8  (s1,  s2,  ss1);
+    rev_add_9  u9  (s3,  s4,  ss2);
+    rev_add_9  u10 (s5,  s6,  ss3);
+    rev_add_9  u11 (s7,  s8,  ss4);
+
+    rev_add_10 u12 (ss1, ss2, sss1);
+    rev_add_10 u13 (ss3, ss4, sss2);
+
+    rev_add_11 u14 (sss1, sss2, sss3);
+
+    assign denoised_pix = sss3[11:4]; // Divide by 16 (mean)
+endmodule
+
+
+
+
+
+
+
+
